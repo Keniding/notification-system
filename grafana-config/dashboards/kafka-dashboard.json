@@ -1,0 +1,340 @@
+{
+  "id": null,
+  "title": "Kafka Notification System - Working Dashboard",
+  "tags": [
+    "kafka",
+    "notification"
+  ],
+  "style": "dark",
+  "timezone": "browser",
+  "panels": [
+    {
+      "id": 1,
+      "title": "\u26a1 Broker State",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "kafka_server_KafkaServer_BrokerState",
+          "legendFormat": "Broker State",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "text": "Not Running",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "Starting",
+                  "color": "yellow"
+                },
+                "2": {
+                  "text": "Recovery",
+                  "color": "orange"
+                },
+                "3": {
+                  "text": "Running",
+                  "color": "green"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "green",
+                "value": 3
+              }
+            ]
+          },
+          "unit": "none"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": 2,
+      "title": "Particiones Totales",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "kafka_server_ReplicaManager_PartitionCount",
+          "legendFormat": "Partitions",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "none",
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      }
+    },
+    {
+      "id": 3,
+      "title": "L\u00edderes",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "kafka_server_ReplicaManager_LeaderCount",
+          "legendFormat": "Leaders",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "none"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      }
+    },
+    {
+      "id": 4,
+      "title": "M\u00e9tricas del Sistema",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "kafka_server_KafkaServer_yammer_metrics_count",
+          "legendFormat": "Total Metrics",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "none"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      }
+    },
+    {
+      "id": 5,
+      "title": "Disk I/O",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "kafka_server_KafkaServer_linux_disk_read_bytes",
+          "legendFormat": "Disk Read",
+          "refId": "A"
+        },
+        {
+          "expr": "kafka_server_KafkaServer_linux_disk_write_bytes",
+          "legendFormat": "Disk Write",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "Bytes",
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          },
+          "unit": "bytes"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      }
+    },
+    {
+      "id": 6,
+      "title": "Operaciones Delayed",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "kafka_server_DelayedOperationPurgatory_NumDelayedOperations_delayedOperation_Fetch",
+          "legendFormat": "Fetch Operations",
+          "refId": "A"
+        },
+        {
+          "expr": "kafka_server_DelayedOperationPurgatory_NumDelayedOperations_delayedOperation_Heartbeat",
+          "legendFormat": "Heartbeat Operations",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0
+          }
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      }
+    },
+    {
+      "id": 7,
+      "title": "Fetch Sessions",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "kafka_server_FetchSessionCache_NumIncrementalFetchSessions",
+          "legendFormat": "Active Sessions",
+          "refId": "A"
+        },
+        {
+          "expr": "kafka_server_FetchSessionCache_NumIncrementalFetchPartitionsCached",
+          "legendFormat": "Cached Partitions",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "none"
+        }
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      }
+    },
+    {
+      "id": 8,
+      "title": "Replica Manager Stats",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "kafka_server_ReplicaManager_AtMinIsrPartitionCount",
+          "legendFormat": "At Min ISR",
+          "refId": "A"
+        },
+        {
+          "expr": "kafka_server_ReplicaManager_UnderReplicatedPartitions",
+          "legendFormat": "Under Replicated",
+          "refId": "B"
+        },
+        {
+          "expr": "kafka_server_ReplicaManager_OfflineReplicaCount",
+          "legendFormat": "Offline Replicas",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        }
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      }
+    },
+    {
+      "id": 9,
+      "title": "Spring Boot - HTTP Requests",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "rate(http_server_requests_seconds_count[5m])",
+          "legendFormat": "Requests/sec",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 22
+      }
+    }
+  ],
+  "time": {
+    "from": "now-5m",
+    "to": "now"
+  },
+  "refresh": "5s",
+  "schemaVersion": 27,
+  "version": 0
+}

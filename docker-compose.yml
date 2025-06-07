@@ -19,6 +19,7 @@ services:
     ports:
       - "29092:29092"
       - "9092:9092"
+      - "9999:9999"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
@@ -29,7 +30,11 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      # JMX para métricas
+      KAFKA_JMX_PORT: 9999
+      KAFKA_JMX_HOSTNAME: kafka
 
+  # Kafka UI
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: kafka-ui
@@ -41,3 +46,66 @@ services:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
       DYNAMIC_CONFIG_ENABLED: 'true'
+
+  # Kafdrop - Visualización atractiva
+  kafdrop:
+    image: obsidiandynamics/kafdrop:latest
+    container_name: kafdrop
+    depends_on:
+      - kafka
+    ports:
+      - "9000:9000"
+    environment:
+      KAFKA_BROKERCONNECT: kafka:29092
+      JVM_OPTS: "-Xms32M -Xmx64M"
+      SERVER_SERVLET_CONTEXTPATH: "/"
+
+  # JMX Exporter para Prometheus
+  jmx-exporter:
+    image: bitnami/jmx-exporter:latest
+    container_name: jmx-exporter
+    depends_on:
+      - kafka
+    ports:
+      - "5556:5556"
+    volumes:
+      - ./jmx-config.yml:/opt/bitnami/jmx-exporter/example_configs/kafka.yml
+    command: ["5556", "/opt/bitnami/jmx-exporter/example_configs/kafka.yml"]
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+
+  # Grafana - Dashboard visual
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-storage:/var/lib/grafana
+      - ./grafana-config/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana-config/datasources:/etc/grafana/provisioning/datasources
+
+volumes:
+  grafana-storage:
+
+# Kafdrop (Más visual): http://localhost:9000
+# Kafka UI (Funcional): http://localhost:8080
+# Prometheus (Métricas): http://localhost:9090
+# Grafana (Dashboards): http://localhost:3000
+# Usuario: admin
+# Contraseña: admin
