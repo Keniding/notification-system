@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: notification-system
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+    consumer:
+      group-id: notification-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.example.notifications.dto"
+        spring.json.add.type.headers: false
+
+server:
+  port: 8081
+
+logging:
+  level:
+    com.example.notifications: DEBUG
+    org.springframework.kafka: INFO
