@@ -8,13 +8,12 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Data
-@AllArgsConstructor
-@NoArgsConstructor
 @Builder
-public class UserAnalyticsEvent {
-    private String userId;
-    private String event; // USER_REGISTERED, EMAIL_SENT, SMS_SENT
-    private String source;
-    private String country;
+@NoArgsConstructor
+@AllArgsConstructor
+public class AnalyticsStats {
+    private long totalRegistrations;
+    private long totalEvents;
     private LocalDateTime timestamp;
+    private String status;
 }

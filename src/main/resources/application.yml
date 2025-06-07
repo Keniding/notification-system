@@ -13,14 +13,17 @@ spring:
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      enable-auto-commit: false
       properties:
-        spring.json.trusted.packages: "com.example.notifications.dto"
+        spring.json.trusted.packages: "*"
         spring.json.add.type.headers: false
+    listener:
+      ack-mode: manual
 
 server:
   port: 8081
 
 logging:
   level:
-    com.example.notifications: DEBUG
+    com.keniding.notificationSystem: DEBUG
     org.springframework.kafka: INFO

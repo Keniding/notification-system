@@ -1,6 +1,7 @@
 package com.keniding.notificationSystem.controller;
 
 import com.keniding.notificationSystem.consumer.AnalyticsConsumer;
+import com.keniding.notificationSystem.dto.AnalyticsStats;
 import com.keniding.notificationSystem.dto.UserRegisteredEvent;
 import com.keniding.notificationSystem.dto.UserRegistrationRequest;
 import com.keniding.notificationSystem.producer.UserEventProducer;
@@ -38,7 +39,7 @@ public class UserController {
 
             userEventProducer.publishUserRegistered(event);
             log.info("User registration event published for: {}", request.getEmail());
-            return ResponseEntity.ok("User registration successfully! Notifications will be sent shortly");
+            return ResponseEntity.ok("User registration successful! Notifications will be sent shortly");
         } catch (Exception e) {
             log.error("Error occurred while processing user registration request for: {}", request.getEmail(), e);
             return ResponseEntity.internalServerError().body("Error registering user. Please try again later");
@@ -63,20 +64,31 @@ public class UserController {
             userEventProducer.publishUserRegisteredSync(event);
             log.info("User registration event published synchronously for: {}", request.getEmail());
 
-            return ResponseEntity.ok("User registration successfully (synchronous)!");
+            return ResponseEntity.ok("User registration successful (synchronous)!");
         } catch (Exception e) {
-            log.error("Error occurred while processing user registration user synchronously: {}", request.getEmail(), e);
+            log.error("Error occurred while processing user registration synchronously: {}", request.getEmail(), e);
             return ResponseEntity.internalServerError().body("Error registering user synchronously. Please try again later");
         }
     }
 
     @GetMapping("/analytics/stats")
-    public ResponseEntity<String> getAnalyticsStats() {
+    public ResponseEntity<AnalyticsStats> getAnalyticsStats() {
         try {
-            String stats = analyticsConsumer.getCurrentStats();
+            AnalyticsStats stats = analyticsConsumer.getCurrentStats();
             return ResponseEntity.ok(stats);
         } catch (Exception e) {
             log.error("Error getting analytics stats", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @GetMapping("/analytics/stats/text")
+    public ResponseEntity<String> getAnalyticsStatsAsText() {
+        try {
+            String stats = analyticsConsumer.getCurrentStatsAsString();
+            return ResponseEntity.ok(stats);
+        } catch (Exception e) {
+            log.error("Error getting analytics stats as text", e);
             return ResponseEntity.internalServerError().body("Error retrieving analytics stats");
         }
     }
@@ -107,10 +119,30 @@ public class UserController {
                 Thread.sleep(100);
             }
 
-            return ResponseEntity.ok("Bulk user registration successfully!, " + count + " test users!");
+            return ResponseEntity.ok("Bulk user registration successful! " + count + " test users registered!");
         } catch (Exception e) {
             log.error("Error registering bulk users", e);
             return ResponseEntity.internalServerError().body("Error registering bulk users");
+        }
+    }
+
+    @GetMapping("/analytics/registrations")
+    public ResponseEntity<Long> getTotalRegistrations() {
+        try {
+            return ResponseEntity.ok(analyticsConsumer.getTotalRegistrations());
+        } catch (Exception e) {
+            log.error("Error getting total registrations", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @GetMapping("/analytics/events")
+    public ResponseEntity<Long> getTotalEvents() {
+        try {
+            return ResponseEntity.ok(analyticsConsumer.getTotalEvents());
+        } catch (Exception e) {
+            log.error("Error getting total events", e);
+            return ResponseEntity.internalServerError().build();
         }
     }
 }

@@ -1,6 +1,7 @@
 package com.keniding.notificationSystem.consumer;
 
 import com.keniding.notificationSystem.config.KafkaConfig;
+import com.keniding.notificationSystem.dto.AnalyticsStats;
 import com.keniding.notificationSystem.dto.UserAnalyticsEvent;
 import com.keniding.notificationSystem.dto.UserRegisteredEvent;
 import lombok.extern.slf4j.Slf4j;
@@ -9,30 +10,31 @@ import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
-import java.util.concurrent.ConcurrentHashMap;
+import java.time.LocalDateTime;
 import java.util.concurrent.atomic.AtomicLong;
 
-@Service
+@Component
 @Slf4j
 public class AnalyticsConsumer {
-    private final ConcurrentHashMap<String, AtomicLong> concurrentStats = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, AtomicLong> sourceStats = new ConcurrentHashMap<>();
-    private final AtomicLong totalRegistrations =  new AtomicLong(0);
+
+    private final AtomicLong totalRegistrations = new AtomicLong(0);
+    private final AtomicLong totalEvents = new AtomicLong(0);
 
     @KafkaListener(
             topics = KafkaConfig.USER_REGISTERED_TOPIC,
-            groupId = "analytics-group"
+            groupId = "analytics-group",
+            containerFactory = "userRegisteredKafkaListenerContainerFactory"
     )
     public void handleUserRegistered(
             @Payload UserRegisteredEvent event,
             @Header(KafkaHeaders.RECEIVED_PARTITION) int partition,
             @Header(KafkaHeaders.OFFSET) long offset,
-            Acknowledgment acknowledgment
-            ) {
+            Acknowledgment acknowledgment) {
         try {
-            log.info("Processing user registered event for analytics - User: {}, Partition: {}, Offset: {}", event, partition, offset);
+            log.info("Processing user registered event for analytics - User: {}, Partition: {}, Offset: {}",
+                    event.getUserId(), partition, offset);
             procesRegistrationAnalytics(event);
             acknowledgment.acknowledge();
 
@@ -41,17 +43,18 @@ public class AnalyticsConsumer {
             }
         } catch (Exception e) {
             log.error("Error processing analytics for user: {}", event.getUserId(), e);
-            acknowledgment.acknowledge();
+            acknowledgment.acknowledge(); // Acknowledge even on error to avoid infinite retry
         }
     }
 
     @KafkaListener(
             topics = KafkaConfig.USER_ANALYTICS_TOPIC,
-            groupId = "analytics-events-group"
+            groupId = "analytics-events-group",
+            containerFactory = "userAnalyticsKafkaListenerContainerFactory"
     )
     public void handleAnalyticsEvent(
-             @Payload UserAnalyticsEvent event,
-             Acknowledgment acknowledgment) {
+            @Payload UserAnalyticsEvent event,
+            Acknowledgment acknowledgment) {
         try {
             log.debug("Processing analytics event: {} for user: {}", event.getEvent(), event.getUserId());
             processSpecificAnalytics(event);
@@ -63,42 +66,53 @@ public class AnalyticsConsumer {
     }
 
     private void procesRegistrationAnalytics(UserRegisteredEvent event) {
-        long total = totalRegistrations.incrementAndGet();
-
-        if (event.getCountry() != null) {
-            concurrentStats.computeIfAbsent(event.getCountry(), k -> new AtomicLong(0)).incrementAndGet();
-        }
-
-        log.info("Registration analytics update - Total: {}, Country: {}, Source: {}", total, event.getCountry(), event.getSource());
+        long count = totalRegistrations.incrementAndGet();
+        log.info("User registration analytics processed. Total registrations: {}", count);
     }
 
     private void processSpecificAnalytics(UserAnalyticsEvent event) {
-        switch (event.getEvent()) {
-            case "EMAIL_SENT":
-                break;
-            case "SMS_SENT":
-                break;
-            default:
-                log.debug("Unknown event type: {}", event.getEvent());
-        }
+        long count = totalEvents.incrementAndGet();
+        log.debug("Analytics event processed: {}. Total events: {}", event.getEvent(), count);
     }
 
     private void printCurrentStats() {
-        log.info("=== CURRENT ANALYTICS STATS ===");
-        log.info("Total registrations: {}", totalRegistrations.get());
-        log.info("Registrations by Country:");
-        concurrentStats.forEach((source, count) -> log.info("\t{}: {}", source, count.get()));
-        log.info("===============================");
+        log.info("=== ANALYTICS STATS ===");
+        log.info("Total Registrations: {}", totalRegistrations.get());
+        log.info("Total Events: {}", totalEvents.get());
+        log.info("Timestamp: {}", LocalDateTime.now());
+        log.info("=======================");
     }
 
-    public String getCurrentStats() {
-        StringBuilder stats = new StringBuilder();
-        stats.append("Total Registrations: ")
-                .append(totalRegistrations.get()).append("\n");
-        stats.append("By Country: ")
-                .append(concurrentStats).append("\n");
-        stats.append("By Source: ")
-                .append(sourceStats).append("\n");
-        return stats.toString();
+    public AnalyticsStats getCurrentStats() {
+        return AnalyticsStats.builder()
+                .totalRegistrations(totalRegistrations.get())
+                .totalEvents(totalEvents.get())
+                .timestamp(LocalDateTime.now())
+                .status("active")
+                .build();
+    }
+
+    public String getCurrentStatsAsString() {
+        AnalyticsStats stats = getCurrentStats();
+        return String.format(
+                "=== ANALYTICS STATS ===\n" +
+                        "Total Registrations: %d\n" +
+                        "Total Events: %d\n" +
+                        "Timestamp: %s\n" +
+                        "Status: %s\n" +
+                        "=======================",
+                stats.getTotalRegistrations(),
+                stats.getTotalEvents(),
+                stats.getTimestamp(),
+                stats.getStatus()
+        );
+    }
+
+    public long getTotalRegistrations() {
+        return totalRegistrations.get();
+    }
+
+    public long getTotalEvents() {
+        return totalEvents.get();
     }
 }

@@ -1,44 +1,46 @@
 package com.keniding.notificationSystem.consumer;
 
 import com.keniding.notificationSystem.config.KafkaConfig;
-import com.keniding.notificationSystem.dto.SmsNotificationEvent;
 import com.keniding.notificationSystem.dto.UserAnalyticsEvent;
 import com.keniding.notificationSystem.dto.UserRegisteredEvent;
+import com.keniding.notificationSystem.producer.UserEventProducer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.Set;
 
-@Service
-@RequiredArgsConstructor
+@Component
 @Slf4j
+@RequiredArgsConstructor
 public class SmsNotificationConsumer {
-    private final KafkaTemplate<String, SmsNotificationEvent> smsKafkaTemplate;
-    private final KafkaTemplate<String, UserAnalyticsEvent>  analyticsKafkaTemplate;
+
+    private final UserEventProducer userEventProducer;
+    private static final Set<String> SUPPORTED_COUNTRIES = Set.of("US", "CA", "GB", "ES", "FR", "DE");
 
     @KafkaListener(
             topics = KafkaConfig.SMS_NOTIFICATIONS_TOPIC,
-            groupId = "sms-notification-group"
+            groupId = "sms-notification-group",
+            containerFactory = "userRegisteredKafkaListenerContainerFactory"
     )
     public void handlerUserRegistered(
             @Payload UserRegisteredEvent event,
             @Header(KafkaHeaders.RECEIVED_PARTITION) int partitions,
             @Header(KafkaHeaders.OFFSET) String offset,
-            Acknowledgment acknowledgment
-            ) {
+            Acknowledgment acknowledgment) {
         try {
-            log.info("Processing user registered event for SMS notification - User: {}, Partition: {}, Offset: {}", event, partitions, offset);
+            log.info("Processing user registered event for SMS notification - User: {}, Partition: {}, Offset: {}",
+                    event.getUserId(), partitions, offset);
 
             if (!isSmsSupported(event.getCountry())) {
-                log.warn("SMS not supported for country: {}, Partition: {}, Offset: {}", event.getCountry(), partitions, offset);
+                log.warn("SMS not supported for country: {}, Partition: {}, Offset: {}",
+                        event.getCountry(), partitions, offset);
                 acknowledgment.acknowledge();
                 return;
             }
@@ -47,6 +49,7 @@ public class SmsNotificationConsumer {
             publishSmsEvent(event, message);
             publishAnalyticsEvent(event, "SMS_SENT");
             acknowledgment.acknowledge();
+
             log.info("Successfully processed SMS notification for user: {}", event.getUserId());
         } catch (Exception e) {
             log.error("Error while processing SMS notification for user: {}", event.getUserId(), e);
@@ -55,45 +58,38 @@ public class SmsNotificationConsumer {
     }
 
     private boolean isSmsSupported(String country) {
-        return country != null && !country.equals("RESTRICTED");
+        return SUPPORTED_COUNTRIES.contains(country);
     }
 
     private String processSmsNotification(UserRegisteredEvent event) {
-        try {
-            Thread.sleep(ThreadLocalRandom.current().nextInt(300, 800));
-            String message = String.format("Welcome %s! Your account has successfully create. Thanks for registered", event.getName());
-            log.info("Sending SMS to: {} ({}): {}", event.getName(), event.getPhone(), message);
+        String message = String.format("Welcome %s! Your account has been created successfully. Country: %s",
+                event.getUserId(), event.getCountry());
+        log.info("Sending SMS to user: {} with message: {}", event.getUserId(), message);
 
-            return message;
-        } catch (Exception e) {
+        try {
+            Thread.sleep(150);
+        } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new RuntimeException("SMS notification processing failed", e);
         }
+
+        log.info("SMS sent successfully to user: {}", event.getUserId());
+        return message;
     }
 
     private void publishSmsEvent(UserRegisteredEvent event, String message) {
-        SmsNotificationEvent smsEvent = new SmsNotificationEvent(
-                event.getUserId(),
-                event.getPhone(),
-                message,
-                event.getCountry(),
-                LocalDateTime.now()
-        );
-
-        smsKafkaTemplate.send(KafkaConfig.SMS_NOTIFICATIONS_TOPIC, smsEvent.getUserId(), smsEvent);
-        log.debug("Published SMS notification to topic: {}", smsEvent.getUserId());
+        log.debug("Publishing SMS event for user: {} with message length: {}",
+                event.getUserId(), message.length());
     }
 
     private void publishAnalyticsEvent(UserRegisteredEvent event, String eventType) {
-        UserAnalyticsEvent analyticsEvent = new UserAnalyticsEvent(
-                event.getUserId(),
-                eventType,
-                event.getSource(),
-                event.getCountry(),
-                LocalDateTime.now()
-        );
+        UserAnalyticsEvent analyticsEvent = UserAnalyticsEvent.builder()
+                .userId(event.getUserId())
+                .event(eventType)
+                .source("sms-service")
+                .country(event.getCountry())
+                .timestamp(LocalDateTime.now())
+                .build();
 
-        analyticsKafkaTemplate.send(KafkaConfig.USER_ANALYTICS_TOPIC, analyticsEvent.getUserId(), analyticsEvent);
-        log.debug("Published UserAnalytics event to topic: {}", analyticsEvent.getUserId());
+        userEventProducer.publishAnalyticsEvent(analyticsEvent);
     }
 }
